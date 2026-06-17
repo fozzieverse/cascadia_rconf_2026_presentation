@@ -1,0 +1,134 @@
+.one-col {
+  display: flex;
+  height: 100%;
+}
+
+.two-col {
+  display: flex;
+  height: 100%;
+}
+.two-col .left,
+.two-col .right {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.1rem;
+}
+.two-col .right img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+@media (max-width: 800px) {
+  .two-col { flex-direction: column; }
+  .two-col .left, .two-col .right { width: 100%; }
+}
+/* Blue box */
+.blue-box {
+  display: inline-block;
+  padding: 0.1em;
+  border: 2px solid #1e6fff;
+  line-height: 1;
+  vertical-align: baseline;
+}
+
+/* white box */
+.white-box {
+  display: inline-block;
+  padding: 0.1em;
+  border: 2px solid #ffffff;
+  line-height: 1;
+  vertical-align: baseline;
+}
+
+.check-unicode::before {
+  content: "✔";
+  color: #1e9d4a;         /* green */
+  margin-right: 0.1em;
+  font-weight: 700;
+  display: inline-block;
+  line-height: 1;
+}
+.x-unicode::before {
+  content: "✖";       /* or "✕" or "✗" */
+  color: #d32f2f;
+  margin-right: 0.35em;
+  font-weight: 700;
+  display: inline-block;
+  line-height: 1;
+}
+
+
+/* Yellow circle */
+.yellow-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.1em;
+  border: 2px solid #ffd400;
+  border-radius: 999px;
+  line-height: 1;
+  vertical-align: baseline;
+  min-width: 1em;
+  height: 1em;
+  box-sizing: content-box;
+}
+
+.red-diamond {
+  position: relative;
+  display: inline-block;
+  padding: 0.1em;
+  z-index: 0;
+}
+
+.red-diamond::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid #ff3333;
+  transform: rotate(45deg);        /* rotate the shape only */
+  border-radius: 2px;
+  z-index: -1;                     /* place behind the text */
+  box-sizing: border-box;
+}
+
+/* Purple underline */
+.purple-underline {
+  display: inline;
+  position: relative;
+  text-decoration: none;
+}
+
+.purple-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0.18em;
+  background: #c48aff;
+  bottom: -0.2em;
+  border-radius: 0.1em;
+  transform-origin: left center;
+}
+
+.x-overlay { position: relative; }
+
+.x-overlay::before,
+.x-overlay::after {
+  content: "";
+  position: absolute;
+  top: 8px;    /* inset from edges — adjust to avoid covering slide */
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  background: linear-gradient(45deg, transparent 44%, rgba(255,0,0,0.95) 44%, rgba(255,0,0,0.95) 56%, transparent 56%);
+  pointer-events: none;
+}
+
+.x-overlay::after {
+  background: linear-gradient(-45deg, transparent 44%, rgba(255,0,0,0.95) 44%, rgba(255,0,0,0.95) 56%, transparent 56%);
+}
+
+/* ensure stacking so text stays above or below as you prefer */
+.x-overlay { z-index: 0; }
+.x-overlay * { position: relative; z-index: 0; }
+

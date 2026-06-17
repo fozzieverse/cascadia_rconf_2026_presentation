@@ -1,0 +1,429 @@
+---
+title: "Efficient Fuzzy Joins: Introducing `fozziejoin`"
+author:
+    name: "Jon Downs"
+    orcid: 0009-0006-3392-9782
+    email: jon.downs@doh.wa.gov
+    affiliations: 
+        - name: "Washington State Department of Health"
+format: 
+    revealjs:
+        theme: dark
+        embed-resources: true
+        css: styles.css
+---
+
+# Introduction 
+
+## What is a Fuzzy Join?
+
+- Matches observation pairs within a distance threshold
+- Fuzzy joins are commonly used for the blocking step in administrative record linkage (e.g. birth $\leftrightarrow$ death registries)
+
+```{r, echo=TRUE}
+df1 <- data.frame(name = c('michael'))
+df2 <- data.frame(name = c('michelle', 'jim', 'kim', "dominick"))
+matches <- fozziejoin::fozzie_string_join(
+  df1, df2, method='jaccard', q=2, max_distance=0.6, distance_col='dist'
+)
+print(matches)
+```
+
+## What Join Types Does `fozziejoin` offer?
+
+- `fozzie_string_join`: 10 string distance algorithms available
+- `fozzie_difference_join`: numeric difference, e.g.  a - b
+- `fozzie_distance_join`: euclidean and manhattan
+- `fozzie_interval_join`: discrete or continuous
+- `fozzie_regex_join`: join regular expressions to a dataframe
+- `fozzie_temporal_join`: join date/datetime by seconds/days/weeks
+- `fozzie_temporal_interval_join`: join on date/datetime intervals
+
+## Other R Packages for Fuzzy Joins
+
+- `fuzzyjoin`- popular, intuitive API, deterministic, many algorithm choices, slow
+- `zoomerjoin`- Uses Locality Sensitive Hashing (LSH), fast, probabilistic, needs hyperparameter tuning, limited algorithms
+
+## Why Make `fozziejoin`?
+
+- `fuzzyjoin` scales poorly with size
+- `zoomerjoin` is fast, but there are tradeoffs
+    - Less distance algorithm availability
+    - Requires LSH parameter fine-tuning and familiarity
+    - High fixed costs; not necessarily faster
+    - Only supports single-column joins
+    - Non-deterministic
+- `fozziejoin` strives for user friendliness, speed, and deterministic behavior
+
+# How Do `fozziejoin` and `fuzzyjoin`'s Implementations Differ?
+
+## Inner Jaccard Join Example
+
+- Let's compare `fuzzyjoin`'s method to a simplified version of `fozziejoin`'s method
+- Task: match names in left hand dataframe to names in right-hand dataframe 
+- Parameters: max distance $\leq 0.6$, use bigrams (`q=2`) to compare strings
+- The optimizations used by `fozziejoin` will differ based on the join type and algorithm. Thus, this is not representative of all `fozziejoin` algorithms.
+
+# How `fuzzyjoin` Does Jaccard Joins
+
+## Step 1: Construct Q-grams
+
+- Since `q=2`, create overlapping windows of 2 characters for each word
+
+::: {.two-col}
+
+<div class="left">
+<h3 style="text-align: center">Left</h3>
+- mi ic ch he ea al
+</div>
+
+<div class="right">
+<h3 style="text-align: center">Right</h3>
+
+- mi ic ch he el ll le
+- ki im
+- ji im
+- do om mi in ni ic ck
+</div>
+:::
+
+## Step 2: Calculate Pairwise Distances
+
+- Evaluate $D_J(A, B) = 1 - \frac{|A \cap B|}{|A| + |B| - |A \cap B|}$ for all pairs
+- Keep if result is below threshold (0.6)
+
+::: {.one-col}
+- 
+  <div class="check-unicode">
+  <div class="white-box">
+  <p class="blue-box">mi</p>
+  <p class="yellow-circle">ic</p>
+  <p class="red-diamond">ch</p>
+  <p class="purple-underline">he</p>
+  ea al</div>
+  vs.
+  <div class="white-box">
+  <p class="blue-box">mi</p>
+  <p class="yellow-circle">ic</p>
+  <p class="red-diamond">ch</p>
+  <p class="purple-underline">he</p>
+  el ll le</div>
+  $= 0.\overline{55}$</div>
+- 
+  <div class="x-unicode">
+  <div class="white-box">mi ic ch he ea al</div>
+  vs.
+  <div class="white-box">ki im</div>
+  $= 1$</div>
+- 
+  <div class="x-unicode">
+  <div class="white-box">mi ic ch he ea al</div>
+  vs.
+  <div class="white-box">ji im</div>
+  $= 1$</div>
+-
+  <div class="x-unicode">
+  <div class="white-box">
+  <p class="blue-box">mi</p>
+  <p class="yellow-circle">ic</p>
+  ch he ea al</div>
+  vs.
+  <div class="white-box">do om <p class="blue-box">mi</p>
+  in ni 
+  <p class="yellow-circle">ic</p>
+  ck</div>
+  $= 0.\overline{81}$</div>
+
+:::
+
+# How `fozziejoin` does Jaccard joins
+
+## Step 1: Q-Gram Index
+
+- Construct a *reverse q-gram index* for right-hand side
+- This reduces the cost of repeated lookups
+
+::: {.two-col}
+<div class="left">
+<h3 style="text-align: center">Left</h3>
+- mi ic ch he ea al
+</div>
+
+<div class="right">
+<h3 style="text-align: center">Right</h3>
+<div class="two-col">
+<div class="left" >
+<h4 style="text-align: center;"><u>Length = 2</u></h4>
+<div style="font-size: 1.2rem;">
+- ji: jim
+- im: jim, kim
+- ki: kim
+</div>
+</div>
+<div class="right">
+<h4 style="text-align: center;"><u>Length = 7</u></h4>
+<div class="two-col" style="font-size: 1.2rem;">
+<div class="left">
+- mi: michelle, dominic
+- ic: michelle, dominic
+- ch: michelle
+- he: michelle
+- el: michelle
+</div>
+<div class="right">
+  - ll: michelle
+  - le: michelle
+  - do: dominick
+  - om: dominick
+  - in: dominick
+  - ni: dominick
+  - ck: dominick
+</div>
+</div>
+</div>
+</div>
+</div>
+:::
+
+
+## Step 2: Smart Filtering Strategies
+
+- With `max_distance=0.6` and `q=2`, "michael" must match a word with 3 to 15 bigrams
+- Ignore q-grams outside of range
+
+::: {.two-col}
+<div class="left">
+<h3 style="text-align: center">Left</h3>
+- mi ic ch he ea al
+</div>
+
+<div class="right">
+<h3 style="text-align: center">Right</h3>
+<div class="two-col">
+<div class="left">
+<div class="x-overlay">
+<h4 style="text-align: center;"><u>Length = 2</u></h4>
+<div style="font-size: 1.2rem;">
+- ji: jim
+- im: jim, kim
+- ki: kim
+</div>
+</div>
+</div>
+<div class="right">
+<h4 style="text-align: center;"><u>Length = 7</u></h4>
+<div class="two-col" style="font-size: 1.2rem;">
+<div class="left">
+- mi: michelle, dominic
+- ic: michelle, dominic
+- ch: michelle
+- he: michelle
+- el: michelle
+</div>
+<div class="right">
+  - ll: michelle
+  - le: michelle
+  - do: dominick
+  - om: dominick
+  - in: dominick
+  - ni: dominick
+  - ck: dominick
+</div>
+</div>
+</div>
+</div>
+</div>
+:::
+
+## Step 3: Q-Gram Lookup
+
+- Look up each bigram in "michael" in our index
+- We find 2 hits for "dominick" and 4 hits for "michelle"
+
+::: {.two-col}
+<div class="left">
+<h3 style="text-align: center">Left</h3>
+- <p class="blue-box">mi</p>
+  <p class="yellow-circle">ic</p> 
+  <p class="red-diamond">ch</p> 
+  <p class="purple-underline">he</p> ea al
+</div>
+
+<div class="right">
+<h3 style="text-align: center">Right</h3>
+<h4 style="text-align: center;"><u>Length = 7</u></h4>
+<div class="two-col" style="font-size: 1.8rem;">
+<div class="left">
+- <p class="blue-box">mi</p>: michelle, dominic
+- <p class="yellow-circle">ic</p>: michelle, dominic
+- <p class="red-diamond">ch</p>: michelle
+- <p class="purple-underline">he</p>: michelle
+- el: michelle
+</div>
+<div class="right">
+  - ll: michelle
+  - le: michelle
+  - do: dominick
+  - om: dominick
+  - in: dominick
+  - ni: dominick
+  - ck: dominick
+</div>
+</div>
+</div>
+:::
+
+## Step 4: Compute Jaccard
+
+- Calculate $D_J(A, B) = 1 - \frac{|A \cap B|}{|A| + |B| - |A \cap B|}$ for each word matching 1+ bigrams
+- $D_J(A, B) = 1$ for any words with no matching bigrams
+- <div class="check-unicode">"michael" vs. "michelle": $1 - \frac{4}{6+7-4} = 0.\overline{55}$</div>
+- <div class="x-unicode">"michael" vs. "dominick": $1 - \frac{2}{6+7-2} = 0.\overline{81}$</div>
+
+## Review 
+
+- `fuzzyjoin` evaluates all pairs; it does not scale well to large dataframes
+- `fozziejoin` prunes candidates via smart search strategies and other optimizations
+  - Significant improvements when match rate is low
+  - Performance closer `fuzzyjoin` as match rate $\approx 1$
+
+# Is `fozziejoin` Fast?
+
+```{r}
+#| echo: false
+
+# Package Load
+library(dplyr)
+library(tidyr)
+
+# Load benchmark CSV
+benches <- vroom::vroom('./results/fuzzy_fozzie_string.csv')
+
+# Pivot results wide to compare packages at each iteration
+pivoted <- benches |>
+  pivot_wider(
+    id_cols = c(samp_size, method),
+    names_from = c(expression),
+    values_from = c(median, mem_alloc)
+  ) |>
+  mutate(
+    time_ratio = median_fuzzyjoin / median_fozziejoin,
+    memory_ratio   = mem_alloc_fuzzyjoin / mem_alloc_fozziejoin
+  )
+
+# Min/max memory for printing
+min_mem <- round(min(pivoted$memory_ratio), 1)
+max_mem <- round(max(pivoted$memory_ratio), 1)
+
+# Min/max time for printing
+min_time <- round(min(pivoted$time_ratio), 1)
+max_time <- round(max(pivoted$time_ratio), 1)
+
+# Used sample sizes for printing
+samp_sizes <- paste0(unique(pivoted$samp_size), collapse=", ")
+```
+
+## `fuzzyjoin` Benchmarks: Methods
+
+- Here, we compare all string distance algorithms available in `fozziejoin` (0.0.14) and `fuzzyjoin` (0.1.8)
+- Data are a random sample of records from the [DIME dataset](https://data.stanford.edu/dime). Inspired by `zoomerjoin` dataset.
+- Task: join a subset of records to itself at 3 sample sizes (`r samp_sizes`)
+- Benchmarks are repeated 10 times
+- For more comprehensive and reproducible GitHub benchmarking workflows, please see the [`fozziejoin` GitHub repo](https://github.com/fozzieverse/fozziejoin)
+
+## `fuzzyjoin` Benchmarks: Time
+
+::: {.two-col}
+<div class="left">
+- `fozziejoin` is between `r sprintf("%.1f", min_time)` and `r sprintf("%.1f", max_time)` times as fast as `fuzzyjoin`
+- Scaling is inconsistent, likely due to small sample size and differing match rates between iterations
+- Results are most similar for Jaro-Winkler
+</div>
+
+<div class="right">
+<img src="./results/fuzzy_fozzie_string_time.svg" alt="Example" />
+</div>
+:::
+
+## `fuzzyjoin` Benchmarks: Peak Memory Usage (MB)
+
+::: {.two-col}
+<div class="left">
+- `fozziejoin` uses between `r sprintf("%.1f", min_mem)` and `r sprintf("%.1f", max_mem)` as much peak memory as `fuzzyjoin`
+</div>
+
+<div class="right">
+<img src="./results/fuzzy_fozzie_string_mem.svg" alt="Example" />
+</div>
+:::
+
+
+# Is `fozziejoin` Faster than `zoomerjoin`?
+
+```{r}
+#| echo: false
+
+# Package Load
+library(dplyr)
+library(tidyr)
+
+# Load benchmark CSV
+benches <- vroom::vroom('./results/zoomer_fozzie_string.csv')
+
+# Pivot results wide to compare packages at each iteration
+pivoted <- benches |>
+  pivot_wider(
+    id_cols = c(samp_size, method),
+    names_from = c(expression),
+    values_from = c(median, mem_alloc)
+  ) |>
+  mutate(
+    memory_ratio = median_zoomer / median_fozzie,
+    time_ratio   = mem_alloc_zoomer / mem_alloc_fozzie
+  )
+
+# Min/max memory for printing
+min_mem <- round(min(pivoted$memory_ratio), 1)
+max_mem <- round(max(pivoted$memory_ratio), 1)
+
+# Min/max time for printing
+min_time <- round(min(pivoted$time_ratio), 1)
+max_time <- round(max(pivoted$time_ratio), 1)
+
+# Used sample sizes for printing
+samp_sizes_jaccard <- paste0(
+  unique(pivoted[pivoted$method == 'jaccard', ]$samp_size / 1e3),
+  collapse="k, ")
+samp_sizes_hamming <- paste0(unique(
+  pivoted[pivoted$method == 'hamming', ]$samp_size / 1e3
+), collapse="k, ")
+```
+
+## What about `zoomerjoin`?
+
+- `zoomerjoin` is designed for large datasets and scales much better than `fuzzyjoin`
+- Here, we update our benchmarking methods to compare `zoomerjoin` and `fozziejoin`
+- `zoomerjoin` uses LSH, and LSH join performance is sensitive to hyperparameters
+- We experimented with hyperparameters to find a good balance of recall and speed
+
+## Methods
+
+- Again, data are sampled from the [DIME dataset](https://data.stanford.edu/dime)
+- We evaluate Jaccard and Hamming distances with 10 iterations
+- For Jaccard distance, we use sample sizes of (`r samp_sizes_jaccard`)
+- For Hamming distance, we use sample sizes of (`r samp_sizes_hamming`)
+
+## `zoomerjoin` vs. `fozziejoin`
+
+::: {.two-col}
+<div class="left">
+- Jaccard time: `zoomerjoin` surpasses `fozziejoin` at joins of around 2 million records
+- Hamming time: `fozziejoin` is faster and scales better in all iterations
+- Memory utilization: `zoomerjoin` uses roughly 3x more memory in all benchmarks
+</div>
+
+<div class="right">
+<img src="./results/zoomer_fozzie_string.svg" alt="Example" />
+</div>
+:::
+
