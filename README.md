@@ -1,7 +1,7 @@
 # Efficient Fuzzy Joins: Introducing `fozziejoin`
 
 This repository contains code and quarto files for the 2026 Cascadia R Conference
-presentation of `fozziejoin`. To access the presentation, see `./fozziejoin.html`. The rest of this document describes how to get set up to run the benchmarking scripts.
+presentation of `fozziejoin`. The published presentation is accessible [here](https://fozzieverse.github.io/cascadia_rconf_2026_presentation/#/title-slide). This repo describes how to run the benchmarking scripts, update parameters, and render the quarto presentation.
 
 ## Running reproducible examples
 
@@ -12,11 +12,13 @@ the examples running.
 ### Clone repo and change working directory
 
 Some scripts rely on relative paths to load helper functions (`helpers.R`). So
-clone the repo and ensure you change the working directory.
+clone the repo and ensure you change the working directory. Also, create
+a `data/` subdirectory to store the input datafile from DIME.
 
 ```sh
-git clone https://github.com/fozzieverse/....
-cd ./....
+git clone https://github.com/fozzieverse/cascadia_rconf_2026_presentation
+cd cascadia_rconf_2026_presentation
+mkdir data/
 ```
 
 ### Install packages
@@ -43,7 +45,7 @@ install.packages('remotes')
 remotes::install_github("fozzieverse/fozziejoin")
 ```
 
-Alternatively, use `renv` if you have R 4.5:
+Alternatively, use `renv` if you have R 4.6.0:
 
 ```r
 renv::restore()
