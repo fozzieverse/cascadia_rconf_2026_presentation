@@ -768,7 +768,6 @@
       "RemoteHost": "api.github.com",
       "RemoteRepo": "fozziejoin",
       "RemoteUsername": "fozzieverse",
-      "RemotePkgRef": "fozzieverse/fozziejoin",
       "RemoteRef": "HEAD",
       "RemoteSha": "f5318d67b34aa230c7e910cac42e2da776a1b9df",
       "NeedsCompilation": "yes",
