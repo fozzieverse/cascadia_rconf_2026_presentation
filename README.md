@@ -23,11 +23,16 @@ mkdir data/
 
 ### Install packages
 
-The presentation relies on `fozziejoin` 0.0.14, which is not published on CRAN
-at time of writing. This development version includes some performance
-optimizations to `jaccard` string distances that are relevant to benchmarks
+For users with `renv` and R 4.6.0, the following should install all required packages:
 
-If installing packages yourself, the following packages are required:
+```r
+renv::restore()
+```
+
+Other users will need to install the required packages. See below code sample.
+Note that `fozziejoin` 0.0.14 is not published to CRAN as of writing, so the
+`remotes` package is used to install `fozziejoin`. Version 0.0.14 includes
+relevant performance optimizations to `jaccard` string distance joins.
 
 ```r
 install.packages('remotes')
@@ -39,16 +44,9 @@ install.packages('tidyr')
 install.packages('dplyr')
 install.packages('ggplot2')
 install.packages('vroom')
-install.packages('remotes')
 
 # Recommend installing latest development fozziejoin.
 remotes::install_github("fozzieverse/fozziejoin")
-```
-
-Alternatively, use `renv` if you have R 4.6.0:
-
-```r
-renv::restore()
 ```
 
 ### Download data

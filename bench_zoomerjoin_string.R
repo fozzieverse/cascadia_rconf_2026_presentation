@@ -6,7 +6,7 @@
 # happens on the R side of both packages, so this problem should be ignorable.
 
 # Global parameters
-NTIMES <- 1
+NTIMES <- 10
 NUM_THREADS <- 16
 
 # Zoomerjoin parameters

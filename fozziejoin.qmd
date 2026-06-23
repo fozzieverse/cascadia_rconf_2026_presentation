@@ -13,11 +13,17 @@ format:
         css: styles.css
 ---
 
-# Introduction 
+# Introduction
+
+## Introducing `fozziejoin`
+
+- `fozziejoin` is an R library for fuzzy joins that prioritizes speed and memory efficiency
+- Version 0.0.13 is available on CRAN
+- `fozziejoin` has a Rust backend for better performance
 
 ## What is a Fuzzy Join?
 
-- Matches observation pairs within a distance threshold
+- A SQL-like join that matches datframe rows that have identical or slightly different values
 - Fuzzy joins are commonly used for the blocking step in administrative record linkage (e.g. birth $\leftrightarrow$ death registries)
 
 ```{r, echo=TRUE}
@@ -31,13 +37,13 @@ print(matches)
 
 ## What Join Types Does `fozziejoin` offer?
 
-- `fozzie_string_join`: 10 string distance algorithms available
-- `fozzie_difference_join`: numeric difference, e.g.  a - b
+- `fozzie_string_join`: 10 string distance algorithms
+- `fozzie_difference_join`: numeric difference, e.g.  $|a - b|$
 - `fozzie_distance_join`: euclidean and manhattan
 - `fozzie_interval_join`: discrete or continuous
-- `fozzie_regex_join`: join regular expressions to a dataframe
-- `fozzie_temporal_join`: join date/datetime by seconds/days/weeks
-- `fozzie_temporal_interval_join`: join on date/datetime intervals
+- `fozzie_regex_join`: regular expressions
+- `fozzie_temporal_join`: date/datetime
+- `fozzie_temporal_interval_join`: date/datetime intervals
 
 ## Other R Packages for Fuzzy Joins
 
@@ -60,9 +66,22 @@ print(matches)
 ## Inner Jaccard Join Example
 
 - Let's compare `fuzzyjoin`'s method to a simplified version of `fozziejoin`'s method
-- Task: match names in left hand dataframe to names in right-hand dataframe 
-- Parameters: max distance $\leq 0.6$, use bigrams (`q=2`) to compare strings
-- The optimizations used by `fozziejoin` will differ based on the join type and algorithm. Thus, this is not representative of all `fozziejoin` algorithms.
+
+```{r, echo=TRUE}
+df1 <- data.frame(name = c('michael'))
+df2 <- data.frame(name = c('michelle', 'jim', 'kim', "dominick"))
+
+# Perform joins
+fozzie <- fozziejoin::fozzie_string_join(
+  df1, df2, method='jaccard', q=2, max_distance=0.6, distance_col='dist'
+)
+fuzzy <- fuzzyjoin::stringdist_join(
+  df1, df2, method='jaccard', q=2, max_dist=0.6, distance_col='dist'
+)
+
+# Prove identical
+print(all.equal(fozzie, fuzzy))
+```
 
 # How `fuzzyjoin` Does Jaccard Joins
 
@@ -138,7 +157,7 @@ print(matches)
 
 # How `fozziejoin` does Jaccard joins
 
-## Step 1: Q-Gram Index
+## Step 1: Reverse Q-Gram Index
 
 - Construct a *reverse q-gram index* for right-hand side
 - This reduces the cost of repeated lookups
@@ -284,8 +303,7 @@ print(matches)
 
 - `fuzzyjoin` evaluates all pairs; it does not scale well to large dataframes
 - `fozziejoin` prunes candidates via smart search strategies and other optimizations
-  - Significant improvements when match rate is low
-  - Performance closer `fuzzyjoin` as match rate $\approx 1$
+- In practice, `fozziejoin` is almost universally faster and more memory efficient
 
 # Is `fozziejoin` Fast?
 
@@ -325,19 +343,18 @@ samp_sizes <- paste0(unique(pivoted$samp_size), collapse=", ")
 
 ## `fuzzyjoin` Benchmarks: Methods
 
-- Here, we compare all string distance algorithms available in `fozziejoin` (0.0.14) and `fuzzyjoin` (0.1.8)
+- Here, we compare all string distance algorithms available in the current *development version* of `fozziejoin` (0.0.14) and `fuzzyjoin` (0.1.8)
 - Data are a random sample of records from the [DIME dataset](https://data.stanford.edu/dime). Inspired by `zoomerjoin` dataset.
 - Task: join a subset of records to itself at 3 sample sizes (`r samp_sizes`)
 - Benchmarks are repeated 10 times
-- For more comprehensive and reproducible GitHub benchmarking workflows, please see the [`fozziejoin` GitHub repo](https://github.com/fozzieverse/fozziejoin)
+- Full code/instructions to reproduce these benchmarks are available in the [GitHub repo for this presentation](https://github.com/fozzieverse/cascadia_rconf_2026_presentation)
 
 ## `fuzzyjoin` Benchmarks: Time
 
 ::: {.two-col}
 <div class="left">
 - `fozziejoin` is between `r sprintf("%.1f", min_time)` and `r sprintf("%.1f", max_time)` times as fast as `fuzzyjoin`
-- Scaling is inconsistent, likely due to small sample size and differing match rates between iterations
-- Results are most similar for Jaro-Winkler
+- Scaling is inconsistent, perhaps dues to differing match rates across sample sizes
 </div>
 
 <div class="right">
@@ -349,14 +366,14 @@ samp_sizes <- paste0(unique(pivoted$samp_size), collapse=", ")
 
 ::: {.two-col}
 <div class="left">
-- `fozziejoin` uses between `r sprintf("%.1f", min_mem)` and `r sprintf("%.1f", max_mem)` as much peak memory as `fuzzyjoin`
+- `fozziejoin` uses `r sprintf("%.1f", min_mem)` and `r sprintf("%.1f", max_mem)` less peak memory than `fuzzyjoin`
+- Scaling is again inconsistent
 </div>
 
 <div class="right">
 <img src="./results/fuzzy_fozzie_string_mem.svg" alt="Example" />
 </div>
 :::
-
 
 # Is `fozziejoin` Faster than `zoomerjoin`?
 
@@ -378,8 +395,8 @@ pivoted <- benches |>
     values_from = c(median, mem_alloc)
   ) |>
   mutate(
-    memory_ratio = median_zoomer / median_fozzie,
-    time_ratio   = mem_alloc_zoomer / mem_alloc_fozzie
+    time_ratio = median_zoomer / median_fozzie,
+    memory_ratio   = mem_alloc_zoomer / mem_alloc_fozzie
   )
 
 # Min/max memory for printing
@@ -392,34 +409,35 @@ max_time <- round(max(pivoted$time_ratio), 1)
 
 # Used sample sizes for printing
 samp_sizes_jaccard <- paste0(
-  unique(pivoted[pivoted$method == 'jaccard', ]$samp_size / 1e3),
-  collapse="k, ")
-samp_sizes_hamming <- paste0(unique(
-  pivoted[pivoted$method == 'hamming', ]$samp_size / 1e3
-), collapse="k, ")
+  paste0(unique(pivoted[pivoted$method == 'Jaccard', ]$samp_size / 1e6), " mln"),
+  collapse = ", "
+)
+samp_sizes_hamming <- paste0(
+  paste0(unique(pivoted[pivoted$method == 'Hamming', ]$samp_size / 1e3), " k"),
+  collapse = ", "
+)
 ```
 
 ## What about `zoomerjoin`?
 
-- `zoomerjoin` is designed for large datasets and scales much better than `fuzzyjoin`
-- Here, we update our benchmarking methods to compare `zoomerjoin` and `fozziejoin`
-- `zoomerjoin` uses LSH, and LSH join performance is sensitive to hyperparameters
-- We experimented with hyperparameters to find a good balance of recall and speed
-
-## Methods
-
-- Again, data are sampled from the [DIME dataset](https://data.stanford.edu/dime)
-- We evaluate Jaccard and Hamming distances with 10 iterations
+- We use much larger sample sizes to benchmark vs. `zoomerjoin` to fit the intended `zoomerjoin` use case (big data)
+- We evaluate Jaccard and Hamming string distances with 10 iterations
 - For Jaccard distance, we use sample sizes of (`r samp_sizes_jaccard`)
 - For Hamming distance, we use sample sizes of (`r samp_sizes_hamming`)
+
+## Notes on `zoomerjoin` Benchmarks
+
+- Due to the nature of LSH, `zoomerjoin` and `fozziejoin` will match differing numbers of records
+- LSH join performance is sensitive to hyperparameters
+- We experimented with hyperparameters to find a good balance of recall and speed
 
 ## `zoomerjoin` vs. `fozziejoin`
 
 ::: {.two-col}
 <div class="left">
-- Jaccard time: `zoomerjoin` surpasses `fozziejoin` at joins of around 2 million records
+- Jaccard time: `zoomerjoin` is fastest at 2 million records
 - Hamming time: `fozziejoin` is faster and scales better in all iterations
-- Memory utilization: `zoomerjoin` uses roughly 3x more memory in all benchmarks
+- Memory utilization: `zoomerjoin` uses `r min_mem` to `r max_mem` times more memory than `fozziejoin`
 </div>
 
 <div class="right">
@@ -427,3 +445,13 @@ samp_sizes_hamming <- paste0(unique(
 </div>
 :::
 
+# Closing
+
+## Summary
+
+- `fozziejoin` is a modern alternative to `fuzzyjoin` that prioritizes speed and memory efficiency
+- To our knowledge, it's the fastest available option in R for many types of fuzzy joins
+- `zoomerjoin` may be a better option with sufficient scale
+- Consider trying out our package! If you like it, give us a star on [GitHub](https://github.com/fozzieverse/fozziejoin)!
+
+# Questions?
