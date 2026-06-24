@@ -23,7 +23,7 @@ format:
 
 ## What is a Fuzzy Join?
 
-- A SQL-like join that matches datframe rows that have identical or slightly different values
+- A SQL-like join that matches dataframe rows that have identical or slightly different values
 - Fuzzy joins are commonly used for the blocking step in administrative record linkage (e.g. birth $\leftrightarrow$ death registries)
 
 ```{r, echo=TRUE}
@@ -351,29 +351,33 @@ samp_sizes <- paste0(unique(pivoted$samp_size), collapse=", ")
 
 ## `fuzzyjoin` Benchmarks: Time
 
-::: {.two-col}
-<div class="left">
+:::: {.columns}
+
+::: {.column}
 - `fozziejoin` is between `r sprintf("%.1f", min_time)` and `r sprintf("%.1f", max_time)` times as fast as `fuzzyjoin`
 - Scaling is inconsistent, perhaps dues to differing match rates across sample sizes
-</div>
-
-<div class="right">
-<img src="./results/fuzzy_fozzie_string_time.svg" alt="Example" />
-</div>
 :::
+
+::: {.column}
+<img src="./results/fuzzy_fozzie_string_time.svg" alt="Example" />
+:::
+
+::::
 
 ## `fuzzyjoin` Benchmarks: Peak Memory Usage (MB)
 
-::: {.two-col}
-<div class="left">
+:::: {.columns}
+
+::: {.column}
 - `fozziejoin` uses `r sprintf("%.1f", min_mem)` and `r sprintf("%.1f", max_mem)` less peak memory than `fuzzyjoin`
 - Scaling is again inconsistent
-</div>
-
-<div class="right">
-<img src="./results/fuzzy_fozzie_string_mem.svg" alt="Example" />
-</div>
 :::
+
+::: {.column}
+<img src="./results/fuzzy_fozzie_string_mem.svg" alt="Example" />
+:::
+
+::::
 
 # Is `fozziejoin` Faster than `zoomerjoin`?
 
@@ -433,17 +437,19 @@ samp_sizes_hamming <- paste0(
 
 ## `zoomerjoin` vs. `fozziejoin`
 
-::: {.two-col}
-<div class="left">
+:::: {.columns}
+
+::: {.column}
 - Jaccard time: `zoomerjoin` is fastest at 2 million records
 - Hamming time: `fozziejoin` is faster and scales better in all iterations
 - Memory utilization: `zoomerjoin` uses `r min_mem` to `r max_mem` times more memory than `fozziejoin`
-</div>
-
-<div class="right">
-<img src="./results/zoomer_fozzie_string.svg" alt="Example" />
-</div>
 :::
+
+::: {.column}
+<img src="./results/zoomer_fozzie_string.svg" alt="Example" />
+:::
+
+::::
 
 # Closing
 
